@@ -1,24 +1,27 @@
 {
-    "name": "nylas/nylas-php",
-    "description": "PHP wrapper for the Nylas API",
-    "license": "MIT",
-    "copyright": "Nylas 2015",
-    "authors" : [
-        {
-          "name": "Kartik Talwar",
-          "email": "kartik@kartikt.com"
-        }
-    ],
-    "require": {
-        "php": ">=5.4",
-        "guzzlehttp/guzzle": "~5.0"
+  "name": "nylas/nylas-php",
+  "description": "PHP wrapper for the Nylas API - updated for 2021",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Kartik Talwar",
+      "email": "kartik@kartikt.com"
     },
-    "require-dev": {
-        "phpunit/phpunit": "~4"
-    },
-    "autoload": {
-        "psr-4": {
-            "Nylas\\": "src/"
-        }
+    {
+      "name": "Mark Stralka",
+      "email": "mark@mobilelocker.com"
     }
+  ],
+  "require": {
+    "php": "^7.4 || ^8.0",
+    "guzzlehttp/guzzle": "^6.0 || ^7.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^8.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Nylas\\": "src/"
+    }
+  }
 }

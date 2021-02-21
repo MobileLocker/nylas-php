@@ -3,135 +3,166 @@
 namespace Nylas;
 
 
+use GuzzleHttp\Utils;
 use Nylas\Models;
 use GuzzleHttp\Client as GuzzleClient;
+use Psr\Http\Message\ResponseInterface;
 
 
-class Nylas {
+class Nylas
+{
 
-    protected $apiServer = 'https://api.nylas.com';
-    protected $apiClient;
-    protected $apiToken;
-    public $apiRoot = '';
+    protected string $apiServer = 'https://api.nylas.com';
+    protected GuzzleClient $apiClient;
+    protected ?string $apiToken;
+    public string $apiRoot = '';
 
-    public function __construct($appID, $appSecret, $token=NULL, $apiServer=NULL) {
-        $this->appID     = $appID;
+    public function __construct(string $appID,
+                                string $appSecret,
+                                ?string $token = null,
+                                ?string $apiServer = null)
+    {
+        $this->appID = $appID;
         $this->appSecret = $appSecret;
-        $this->apiToken  = $token;
+        $this->apiToken = $token;
         $this->apiClient = $this->createApiClient();
 
-        if($apiServer) {
+        if ($apiServer) {
             $this->apiServer = $apiServer;
         }
     }
 
-    protected function createHeaders() {
-        $token = 'Basic '.base64_encode($this->apiToken.':');
+    protected function createHeaders(): array
+    {
+        $token = 'Basic ' . base64_encode($this->apiToken . ':');
         $headers = array('headers' => ['Authorization' => $token,
-                                       'X-Nylas-API-Wrapper' => 'php']);
+            'X-Nylas-API-Wrapper' => 'php']);
         return $headers;
     }
 
-    private function createApiClient() {
+    private function createApiClient(): GuzzleClient
+    {
         return new GuzzleClient(['base_url' => $this->apiServer]);
     }
 
-    public function createAuthURL($redirect_uri, $login_hint=NULL) {
-        $args = array("client_id" => $this->appID,
-                      "redirect_uri" => $redirect_uri,
-                      "response_type" => "code",
-                      "scope" => "email",
-                      "login_hint" => $login_hint,
-                      "state" => $this->generateId());
+    public function createAuthURL($redirect_uri, $login_hint = null)
+    {
+        $args = [
+            "client_id" => $this->appID,
+            "redirect_uri" => $redirect_uri,
+            "response_type" => "code",
+            "scope" => "email",
+            "login_hint" => $login_hint,
+            "state" => $this->generateId(),
+        ];
 
-        return $this->apiServer.'/oauth/authorize?'.http_build_query($args);
+        return $this->apiServer . '/oauth/authorize?' . http_build_query($args);
     }
 
-    public function getAuthToken($code) {
-        $args = array("client_id" => $this->appID,
-                      "client_secret" => $this->appSecret,
-                      "grant_type" => "authorization_code",
-                      "code" => $code);
+    /**
+     * @param $code
+     * @return mixed|string|null
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     */
+    public function getAuthToken($code)
+    {
+        $args = [
+            "client_id" => $this->appID,
+            "client_secret" => $this->appSecret,
+            "grant_type" => "authorization_code",
+            "code" => $code,
+        ];
 
-        $url = $this->apiServer.'/oauth/token';
-        $payload = array();
+        $url = $this->apiServer . '/oauth/token';
+        $payload = [];
         $payload['headers']['Content-Type'] = 'application/x-www-form-urlencoded';
         $payload['headers']['Accept'] = 'text/plain';
         $payload['body'] = $args;
 
-        $response = $this->apiClient->post($url, $payload)->json();
+        $response = $this->jsonDecode($this->apiClient->post($url, $payload));
 
-        if(array_key_exists('access_token', $response)) {
+        if (array_key_exists('access_token', $response)) {
             $this->apiToken = $response['access_token'];
         }
 
         return $this->apiToken;
     }
 
-    public function account() {
+    public function account()
+    {
         $apiObj = new NylasAPIObject();
         $nsObj = new Models\Account();
-        $accountData = $this->getResource('', $nsObj, '', array());
-        $account = $apiObj->_createObject($accountData->klass, NULL, $accountData->data);
+        $accountData = $this->getResource('', $nsObj, '', []);
+        $account = $apiObj->_createObject($accountData->klass, null, $accountData->data);
         return $account;
     }
 
-    public function threads() {
+    public function threads()
+    {
         $msgObj = new Models\Thread($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function messages() {
+    public function messages()
+    {
         $msgObj = new Models\Message($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function drafts() {
+    public function drafts()
+    {
         $msgObj = new Models\Draft($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function labels() {
+    public function labels()
+    {
         $msgObj = new Models\Label($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function files() {
+    public function files()
+    {
         $msgObj = new Models\File($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function contacts() {
+    public function contacts()
+    {
         $msgObj = new Models\Contact($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function calendars() {
+    public function calendars()
+    {
         $msgObj = new Models\Calendar($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function events() {
+    public function events()
+    {
         $msgObj = new Models\Event($this);
-        return new NylasModelCollection($msgObj, $this, NULL, array(), 0, array());
+        return new NylasModelCollection($msgObj, $this, null, [], 0, []);
     }
 
-    public function getResources($namespace, $klass, $filter) {
-        $suffix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $url = $this->apiServer.$suffix.'/'.$klass->collectionName;
-        $url = $url.'?'.http_build_query($filter);
-        $data = $this->apiClient->get($url, $this->createHeaders())->json();
+    public function getResources($namespace, $klass, $filter)
+    {
+        $suffix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $url = $this->apiServer . $suffix . '/' . $klass->collectionName;
+        $url = $url . '?' . http_build_query($filter);
+        $data = $this->jsonDecode($this->apiClient->get($url, $this->createHeaders()));
 
-        $mapped = array();
+        $mapped = [];
         foreach ($data as $i) {
             $mapped[] = clone $klass->_createObject($this, $namespace, $i);
         }
         return $mapped;
     }
 
-    public function getResource($namespace, $klass, $id, $filters) {
+    public function getResource($namespace, $klass, $id, $filters)
+    {
         $extra = '';
-        if(array_key_exists('extra', $filters)) {
+        if (array_key_exists('extra', $filters)) {
             $extra = $filters['extra'];
             unset($filters['extra']);
         }
@@ -139,47 +170,50 @@ class Nylas {
         return $klass->_createObject($this, $namespace, $response);
     }
 
-    public function getResourceRaw($namespace, $klass, $id, $filters) {
+    public function getResourceRaw($namespace, $klass, $id, $filters): ?array
+    {
         $extra = '';
-        if(array_key_exists('extra', $filters)) {
+        if (array_key_exists('extra', $filters)) {
             $extra = $filters['extra'];
             unset($filters['extra']);
         }
-        $prefix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $postfix = ($extra) ? '/'.$extra : '';
-        $url = $this->apiServer.$prefix.'/'.$klass->collectionName.'/'.$id.$postfix;
-        $url = $url.'?'.http_build_query($filters);
-        $data = $this->apiClient->get($url, $this->createHeaders())->json();
-        return $data;
+        $prefix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $postfix = ($extra) ? '/' . $extra : '';
+        $url = $this->apiServer . $prefix . '/' . $klass->collectionName . '/' . $id . $postfix;
+        $url = $url . '?' . http_build_query($filters);
+        $response = $this->apiClient->get($url, $this->createHeaders());
+        return $this->jsonDecode($response);
     }
 
-    public function getResourceData($namespace, $klass, $id, $filters) {
+    public function getResourceData($namespace, $klass, $id, $filters)
+    {
         $extra = '';
-        $customHeaders = array();
-        if(array_key_exists('extra', $filters)) {
+        $customHeaders = [];
+        if (array_key_exists('extra', $filters)) {
             $extra = $filters['extra'];
             unset($filters['extra']);
         }
-        if(array_key_exists('headers', $filters)) {
+        if (array_key_exists('headers', $filters)) {
             $customHeaders = $filters['headers'];
             unset($filters['headers']);
         }
-        $prefix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $postfix = ($extra) ? '/'.$extra : '';
-        $url = $this->apiServer.$prefix.'/'.$klass->collectionName.'/'.$id.$postfix;
-        $url = $url.'?'.http_build_query($filters);
+        $prefix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $postfix = ($extra) ? '/' . $extra : '';
+        $url = $this->apiServer . $prefix . '/' . $klass->collectionName . '/' . $id . $postfix;
+        $url = $url . '?' . http_build_query($filters);
         $customHeaders = array_merge($this->createHeaders()['headers'], $customHeaders);
         $headers = array('headers' => $customHeaders);
         $data = $this->apiClient->get($url, $headers)->getBody();
         return $data;
     }
 
-    public function _createResource($namespace, $klass, $data) {
-        $prefix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $url = $this->apiServer.$prefix.'/'.$klass->collectionName;
+    public function _createResource($namespace, $klass, $data)
+    {
+        $prefix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $url = $this->apiServer . $prefix . '/' . $klass->collectionName;
 
         $payload = $this->createHeaders();
-        if($klass->collectionName == 'files') {
+        if ($klass->collectionName == 'files') {
             $payload['headers']['Content-Type'] = 'multipart/form-data';
             $payload['body'] = $data;
         } else {
@@ -187,35 +221,37 @@ class Nylas {
             $payload['json'] = $data;
         }
 
-        $response = $this->apiClient->post($url, $payload)->json();
+        $response = $this->jsonDecode($this->apiClient->post($url, $payload));
         return $klass->_createObject($this, $namespace, $response);
     }
 
-    public function _updateResource($namespace, $klass, $id, $data) {
-        $prefix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $url = $this->apiServer.$prefix.'/'.$klass->collectionName.'/'.$id;
+    public function _updateResource($namespace, $klass, $id, $data)
+    {
+        $prefix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $url = $this->apiServer . $prefix . '/' . $klass->collectionName . '/' . $id;
 
-        if($klass->collectionName == 'files') {
+        if ($klass->collectionName == 'files') {
             $payload['headers']['Content-Type'] = 'multipart/form-data';
             $payload['body'] = $data;
         } else {
             $payload = $this->createHeaders();
             $payload['json'] = $data;
-            $response = $this->apiClient->put($url, $payload)->json();
+            $response = $this->jsonDecode($this->apiClient->put($url, $payload));
             return $klass->_createObject($this, $namespace, $response);
         }
     }
 
-    public function _deleteResource($namespace, $klass, $id) {
-        $prefix = ($namespace) ? '/'.$klass->apiRoot.'/'.$namespace : '';
-        $url = $this->apiServer.$prefix.'/'.$klass->collectionName.'/'.$id;
+    public function _deleteResource($namespace, $klass, $id): ?array
+    {
+        $prefix = ($namespace) ? '/' . $klass->apiRoot . '/' . $namespace : '';
+        $url = $this->apiServer . $prefix . '/' . $klass->collectionName . '/' . $id;
 
         $payload = $this->createHeaders();
-        $response = $this->apiClient->delete($url, $payload)->json();
-        return $response;
+        return $this->jsonDecode($this->apiClient->delete($url, $payload));
     }
 
-    private function generateId() {
+    private function generateId()
+    {
         // Generates unique UUID
         return sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
             mt_rand(0, 0xffff),
@@ -227,124 +263,14 @@ class Nylas {
             mt_rand(0, 0xffff),
             mt_rand(0, 0xffff)
         );
+    }
+
+    /**
+     * @param ResponseInterface $response
+     * @return array|null
+     */
+    protected function jsonDecode(ResponseInterface $response): ?array
+    {
+        return Utils::jsonDecode($response->getBody()->getContents(), true);
+    }
 }
-
-}
-
-
-class NylasModelCollection {
-
-    private $chunkSize = 50;
-
-    public function __construct($klass, $api, $namespace=NULL, $filter=array(), $offset=0, $filters=array()) {
-        $this->klass = $klass;
-        $this->api = $api;
-        $this->namespace = $namespace;
-        $this->filter = $filter;
-        $this->filters = $filters;
-
-        if(!array_key_exists('offset', $filter)) {
-            $this->filter['offset'] = 0;
-        }
-    }
-
-    public function items() {
-        $offset = 0;
-        while (True) {
-            $items = $this->_getModelCollection($offset, $this->chunkSize);
-            if(!$items) {
-                break;
-            }
-            foreach ($items as $item) {
-                yield $item;
-            }
-            if (count($items) < $this->chunkSize) {
-                break;
-            }
-            $offset += count($items);
-        }
-    }
-
-    public function first() {
-        $results = $this->_getModelCollection(0, 1);
-        if ($results) {
-            return $results[0];
-        }
-        return NULL;
-    }
-
-    public function all($limit=INF) {
-        return $this->_range($this->filter['offset'], $limit);
-    }
-
-    public function where($filter, $filters=array()) {
-        $this->filter = array_merge($this->filter, $filter);
-        $this->filter['offset'] = 0;
-        $collection = clone $this;
-        $collection->filter = $this->filter;
-        return $collection;
-    }
-
-    public function find($id) {
-        return $this->_getModel($id);
-    }
-
-    public function create($data) {
-        return $this->klass->create($data, $this);
-    }
-
-    private function _range($offset, $limit) {
-        $result = array();
-        while (count($result) < $limit) {
-            $to_fetch = min($limit - count($result), $this->chunkSize);
-            $data = $this->_getModelCollection($offset+count($result), $to_fetch);
-            $result = array_merge($result, $data);
-
-            if(!$data || count($data) < $to_fetch) {
-                break;
-            }
-        }
-        return $result;
-    }
-
-    private function _getModel($id) {
-        // make filter a kwarg filters
-        return $this->api->getResource($this->namespace, $this->klass, $id, $this->filter);
-    }
-
-    private function _getModelCollection($offset, $limit) {
-        $this->filter['offset'] = $offset;
-        $this->filter['limit'] = $limit;
-        return $this->api->getResources($this->namespace, $this->klass, $this->filter);
-    }
-
-}
-
-
-class NylasAPIObject {
-
-    public $apiRoot;
-
-    public function __construct() {
-    }
-
-    public function json() {
-        return $this->data;
-    }
-
-    public function _createObject($klass, $namespace, $objects) {
-        $this->data = $objects;
-        $this->klass = $klass;
-        return $this;
-    }
-
-    public function __get($key) {
-        if(array_key_exists($key, $this->data)) {
-            return $this->data[$key];
-        }
-        return NULL;
-    }
-
-}
-
-?>
